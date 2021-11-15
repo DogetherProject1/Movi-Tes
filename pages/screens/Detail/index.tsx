@@ -66,15 +66,7 @@ export default function Detail(){
                         <BodyBottom></BodyBottom>
                     </Body>
                 </SafeAreaTop>
-                <Footer>
-                    <InnerFooter> 
-                        <InputBar 
-                            placeholder="댓글을 입력하세요"
-                            placeholderTextColor={"#888888"}
-                        />
-                        <SendIcon source={require("../../../public/images/List/send.png")}/>
-                    </InnerFooter>
-                </Footer>
+                <CommentWrite />
             </SafeArea>
         </>
     )
