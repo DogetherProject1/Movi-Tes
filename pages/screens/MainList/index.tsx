@@ -1,187 +1,174 @@
 import * as React from 'react';
-import {SafeAreaView, View, Text, TextInput, ScrollView, TouchableOpacity, Button} from 'react-native';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+} from 'react-native';
 import styled from '@emotion/native';
-import PropTypes from 'prop-types'
-import Task from '../../../src/component/Task';
-import IconButton from '../../../src/component/IconButton/IconButton';
-import { Images } from '../../../src/images';
-import moment from 'moment';
+import PropTypes from 'prop-types';
 import 'moment/locale/ko';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
+import SortList from '../../../src/component/SortList';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
+export default function MainList({navigation}) {
+  const [post, setPost] = React.useState(null);
+  // const [date, setDate] = React.useState(moment().format('YYYY/MM/DD'));
+  // const [now, setNow] = React.useState(new Date());
 
-
-
-
-export default function MainList({navigation}){
-  const [newTask, setNewTask] = React.useState('')
-  const [tasks, setTasks] = React.useState([])
-  const [date, setDate] = React.useState(moment().format('MM/DD'))
-  const [now, setNow] = React.useState(new Date());
-
-  function Today(){
-    setDate(moment().format('MM/DD'))
-    
-  }
-
-  function Tomorrow() {
-    setDate(moment(now).add(1,'days').format('MM/DD'));
-    setNow( new Date((now).setHours(24)));
-  }
-
-  function Yesterday(){
-    setDate(moment().subtract(1,'days').format('MM/DD'));
-    setNow( new Date((now).setHours(-24)));
-  }
-  
-
-  Input.propTypes={
+  Input.propTypes = {
     placeholder: PropTypes.string,
     value: PropTypes.string.isRequired,
     onChangeText: PropTypes.func.isRequired,
-    onSubmitEditing:PropTypes.func.isRequired
+    onSubmitEditing: PropTypes.func.isRequired,
   };
-  
-  function AddTask(){
-    const ID = Date.now().toString();
-    const newTaskObject ={
-      [ID]: {id: ID, text: newTask, completed:false}
-    };
-    setNewTask('');
-    setTasks({...tasks, ...newTaskObject})
+
+  const user = auth().currentUser;
+  // const array = [];
+  const postCollection = firestore()
+    .collection('Users')
+    .doc(user?.email)
+    .collection('Todo')
+    .orderBy('important', 'desc');
+  // console.log(firestore().collection('Users').doc(user.email).collection('Todo').get())
+
+  // React.useEffect(() => {
+  //   const doc = firestore()
+  //     .collection('Users')
+  //     .doc(String(user?.email))
+  //     .collection('Todo')
+  // //     .orderBy('date', 'asc')
+  //     .get()
+  //     .then(snapshot => {
+  //       snapshot.forEach(doc => {
+  //         array.push(doc.data());
+  //       });
+  //       setData(array.reverse());
+  //     });
+  // }, [firestore().collection('Users').doc('').collection('Diary').get()]);
+
+  async function getPosts() {
+    const snapshot = await postCollection.get();
+    const posts = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    return posts;
   }
 
-  function HandleTextChange (text){
-    setNewTask(text)
-  }
-  
-  const ToggleTask = id => {
-    const cureentTasks = Object.assign({},tasks);
-    currentTasks[id]['completed'] = !currentTasks[id]['completed']
-    setTasks(currentTasks)
-  }
-  console.log('aaa',Object.values(tasks))
-  
-    return(
+  React.useEffect(() => {
+    getPosts().then(setPost);
+  }, [getPosts()]);
+
+  const renderItem = ({item}) => (
+    <TouchableOpacity onLongPress={() => navigation.navigate('Detail', item)}>
+      <SortList
+        important={item.important}
+        title={item.title}
+        id={item.id}
+        user={item.user}
+        date={item.date}
+        contents={item.contents}
+        category={item.category}
+      />
+    </TouchableOpacity>
+  );
+
+  return (
     <>
-      <SafeArea>
+      <SafeArea style={{backgroundColor: '#0d0d0d'}}>
         <Title_Wrapper>
-          <View style={{width:'100%', flexDirection:'row', justifyContent:'flex-end'}}>
-        <IconButton type={Images.Calendar} onPressOut={() => navigation.navigate('Calendar')}/>
-        </View>
-          <Date_Wrapper>
-          <IconButton type={Images.left_arrow} onPressOut={Yesterday}/>
-        <Date_font onPress={Today}>{date}</Date_font>
-        <IconButton type={Images.right_arrow} onPressOut={Tomorrow}/>
-        </Date_Wrapper>
-        </Title_Wrapper>
-        <CardWrapper>
-        <Input_Wrapper>
-        <Input 
-            placeholder='일정을 추가 해주세요...(30자 내외)' 
-            placeholderTextColor={'#999'} 
-            maxLength={30}
-            autoCapitalize='none'
-            autoCorrect={false}
-            returnKeyType="done"
-            value={newTask}
-            onChangeText={HandleTextChange}
-            onSubmitEditing={AddTask}            
-        />
-      </Input_Wrapper>
-
-      <ScrollView style={{flex:1}}>
-        {Object.values(tasks)[0]
-        ?
-        Object.values(tasks)
-        .reverse()
-        .map(item => (
-          <Task key={item.id} text = {item.text} />
-        ))
-        :<View style={{flexDirection:'column', justifyContent:'center', alignItems:'center'}}>
-        <Text style={{color:'black'}}>Dogether 항목이 없습니다.</Text>
-        <Text style={{color:'black'}}>오늘 할일은 무엇인가요 ?</Text>
-        </View>
-        }
-        </ScrollView>
-        <TouchableOpacity onPressOut={() => navigation.navigate('Register')} >
-          <Text>등록하기</Text>
+          <Title_font style={{color: '#ffbe0b'}}>memo</Title_font>
+          <TouchableOpacity onPressOut={() => navigation.navigate('Calendar')}>
+            <MaterialCommunityIcons
+              name="calendar-month"
+              style={{fontSize: 24, color: '#ffbe0b'}}
+            />
           </TouchableOpacity>
+        </Title_Wrapper>
+        <CardWrapper style={{backgroundColor: '#0d0d0d'}}>
+          <FlatList
+            data={post}
+            renderItem={renderItem}
+            keyExtractor={item => item.date}
+          />
+          <RegisterBtn
+            onPressOut={() => navigation.navigate('Register')}
+            style={{borderWidth: 1, borderColor: 'white'}}>
+            <ButtonText>+</ButtonText>
+          </RegisterBtn>
         </CardWrapper>
       </SafeArea>
     </>
-    )
+  );
 }
-
-
-
 
 const SafeArea = styled(SafeAreaView)`
   flex: 1;
-  background-color: #FFFFFF;
-  /* padding-left: 10px; */
-  /* padding-right: 10px; */
-`
+  /* background-color: #FFFFFF; */
+`;
 
 const Title_Wrapper = styled.View`
-  height: 20%;
+  height: 15%;
   width: 100%;
   display: flex;
-  /* flex-direction: row; */
-  justify-content: center;
+  flex-direction: row;
+  justify-content: space-between;
   align-items: center;
-  /* border: 1px solid black; */
-  /* border-bottom-width: 1; */
-  /* border-bottom-color: red; */
   padding-bottom: 5px;
-  padding-top: 20px;
-  elevation:2
-`
-
-// const AppTitle = styled(Text)`
-//   color: #888888;
-//   font-size: 25px;
-//   margin-top: 5px;
-//   font-weight: 300;
-//   text-align: center;
-//   justify-content: center;
-//   border: 1px solid black;
-//   /* margin-right: 50px; */
-// `
+  padding-top: 30px;
+  /* border: 1px solid lightgray; */
+  padding-left: 20px;
+  padding-right: 20px;
+`;
 
 const CardWrapper = styled(View)`
-  background-color:#fff;
-  /* border: 1px solid blasck; */
+  /* background-color:#fff; */
   flex: 1;
   padding-top: 10px;
   padding-left: 10px;
   padding-right: 10px;
-`
-
-const Input_Wrapper = styled(View)`
-  flex-direction: row;
+  justify-content: center;
   align-items: center;
-  border-bottom-color: gray;
-  border-bottom-width: 1px;
-  margin-bottom: 10px;
-  width: auto;
-  /* border: 1px solid black; */
-`
+  elevation: 20;
+`;
 
 const Input = styled(TextInput)`
   width: auto;
   font-size: 15px;
   margin-right: 10px;
-  /* border: 1px solid black; */
-`
+`;
 
-const Date_font = styled(Text)`
+const Title_font = styled(Text)`
   font-size: 32px;
-`
+  font-weight: 700;
+`;
 
 const Date_Wrapper = styled(View)`
-  flex-direction: row;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   width: 100%;
- 
-`
+`;
+const RegisterBtn = styled(TouchableOpacity)`
+  width: 50px;
+  height: 50px;
+  position: absolute;
+  left: 80%;
+  bottom: 10%;
+  background-color: #ffbe0b;
+  border-radius: 50px;
+  /* justify-content: center; */
+  align-items: center;
+  /* border-style: none; */
+  /* z-index: 1; */
+`;
+
+const ButtonText = styled(Text)`
+  font-size: 33px;
+  color: white;
+`;
